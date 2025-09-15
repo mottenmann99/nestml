@@ -111,15 +111,136 @@ class TestSpiNNakerSTDP:
         return w_curr[0][0], pre_spike_times, post_spike_times
 
 
+
+    def get_trace_at(self,t, t_spikes, tau, initial=0., increment=1., before_increment=False, extra_debug=False):
+        if extra_debug:
+            print("\t-- obtaining trace at t = " + str(t))
+        if len(t_spikes) == 0:
+            return initial
+        tr = initial
+        t_sp_prev = 0.
+        for t_sp in t_spikes:
+            if t_sp > t:
+                break
+            if extra_debug:
+                _tr_prev = tr
+            tr *= np.exp(-(t_sp - t_sp_prev) / tau)
+            if t_sp == t:  # exact floating point match!
+                if before_increment:
+                    if extra_debug:
+                        print("\t   [%] exact (before_increment = T), prev trace = " + str(_tr_prev) + " at t = " + str(t_sp_prev)
+                              + ", decayed by dt = " + str(t - t_sp_prev) + ", tau = " + str(tau) + " to t = " + str(t) + ": returning trace: " + str(tr))
+                    return tr
+                else:
+                    if extra_debug:
+                        print("\t   [%] exact (before_increment = F), prev trace = " + str(_tr_prev) + " at t = " + str(t_sp_prev) + ", decayed by dt = " + str(
+                            t - t_sp_prev) + ", tau = " + str(tau) + " to t = " + str(t) + ": returning trace: " + str(tr + increment))
+                    return tr + increment
+            tr += increment
+            t_sp_prev = t_sp
+        if extra_debug:
+            _tr_prev = tr
+        tr *= np.exp(-(t - t_sp_prev) / tau)
+        if extra_debug:
+            print("\t   [&] prev trace = " + str(_tr_prev) + " at t = " + str(t_sp_prev) + ", decayed by dt = "
+                  + str(t - t_sp_prev) + ", tau = " + str(tau) + " to t = " + str(t) + ": returning trace: " + str(tr))
+        return tr
+
+
+    def run_reference_simulation(self,times_spikes_pre,
+                                 times_spikes_post,
+                                 times_spikes_syn_persp):
+
+        """
+        #setup sPyNNaker in order retrieve values from stdp synapse
+        import pyNN.spiNNaker as p
+        p.setup(timestep=1.0)
+        #import stdp model in order to retrieve parameters
+        from python_models8.neuron.implementations.stdp_synapse_nestml_impl import stdp_synapse_nestmlDynamics as stdp_synapse_nestml
+        stdp_model = stdp_synapse_nestml(weight=0) #0x8000)
+
+        params = stdp_model.get_parameter_names()
+
+        for x in params:
+            print(x + " = " + str(stdp_model._nestml_model_variables[x]))
+        """
+        #set synaptic parameters
+        delay = 1
+        _lambda = 0.01
+        tau_pre = 20
+        tau_post = 20
+
+        #parameters not needed right now
+        #mu_plus = 1
+        #mu_minus = 1
+
+        w_max = 100.0
+        w_min = 0.0
+
+        w_init = 0
+
+        #initialize trace variables
+        tr_pre = 0
+        tr_post = 0
+
+        #initialize weight of simulation
+        weight = w_init
+
+        log = {0.: {"weight": weight, "tr_pre": tr_pre, "tr_post": tr_post}}
+
+        for spk_time in np.unique(times_spikes_syn_persp):
+
+            if spk_time in times_spikes_post:
+                tr_pre = self.get_trace_at(spk_time, times_spikes_pre,
+                                      tau_pre, before_increment=False, extra_debug=True)
+
+                tr_post = self.get_trace_at(spk_time, times_spikes_post,
+                                       tau_post, before_increment=True, extra_debug=True)
+
+                dw = _lambda * tr_pre
+
+                old_weight = weight
+                weight = np.clip(weight + dw, a_min=w_min, a_max=w_max)
+                print("[REF] t = " + str(spk_time) + ": facilitating from " + str(old_weight) + " to " + str(weight) + " with pre tr = " + str(tr_pre) + ", post tr = " + str(tr_post))
+
+            if spk_time in times_spikes_pre:
+                tr_post = self.get_trace_at(spk_time, times_spikes_post,
+                                       tau_post, before_increment=False, extra_debug=True)
+
+                tr_pre = self.get_trace_at(spk_time, times_spikes_pre,
+                                      tau_pre, before_increment=True, extra_debug=True)
+
+                dw = _lambda * tr_post
+
+                old_weight = weight
+                weight = np.clip(weight - dw, a_min=w_min, a_max=w_max)
+                print("[REF] t = " + str(spk_time) + ": depressing from " + str(old_weight) + " to " + str(weight) + " with pre tr = " + str(tr_pre) + ", post tr = " + str(tr_post))
+
+
+            log[spk_time] = {"weight": weight, "tr_pre": tr_pre, "tr_post": tr_post}
+
+        timevec = np.sort(list(log.keys()))
+        weight_reference = np.array([log[k]["weight"] for k in timevec])
+
+        return timevec, weight_reference
+
+
+
     def test_stdp(self):
         res_weights = []
         spike_time_axis = []
 
         pre_spike_times = [250, 1000]
 
+
+        #save post spike times for reference simulation
+        ref_post_spike_times = []
+
         for t_post in np.linspace(200, 300, 19):
         #for t_post in [450.]:
                 dw, actual_pre_spike_times, actual_post_spike_times = self.run_sim(pre_spike_times, [t_post])
+
+                ref_post_spike_times.append(float(actual_post_spike_times[0][0]))
 
                 spike_time_axis.append(float(actual_post_spike_times[0][0]) - float(actual_pre_spike_times[0][0]))
 
@@ -138,6 +259,23 @@ class TestSpiNNakerSTDP:
         print("weights after sim = " + str(res_weights))
 
 
+        #create list containing all spike times
+        all_spike_times = sorted(set(pre_spike_times + ref_post_spike_times))
+        #run reference simulation
+        ref_timevec, ref_weight_reference = self.run_reference_simulation(pre_spike_times, ref_post_spike_times, all_spike_times)
+
+        print("spinnaker weight vector:")
+        print(res_weights)
+        print("reference weight vector:")
+        print(ref_weight_reference)
+
+
+        import pdb
+        pdb.set_trace()
+
+
+
+        #TODO add comparison function here
 
 
         fig, ax = plt.subplots()
