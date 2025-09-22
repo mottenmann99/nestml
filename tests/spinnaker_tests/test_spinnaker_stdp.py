@@ -166,7 +166,10 @@ class TestSpiNNakerSTDP:
         """
         #set synaptic parameters
         delay = 1
-        _lambda = 0.01
+#!!! lambda 0.01
+# 175.0 is good for case w only one pre spike
+# 140.0 is good for case w two pre spike like spinnaker sim
+        _lambda = 175.0
         tau_pre = 20
         tau_post = 20
 
@@ -174,9 +177,11 @@ class TestSpiNNakerSTDP:
         #mu_plus = 1
         #mu_minus = 1
 
-        w_max = 100.0
-        w_min = 0.0
-
+#!!! w_max = 100.0
+        w_max = 300.0
+#!!! w_min 0.0
+        w_min = -300.0
+#!!! w_init = 0
         w_init = 0
 
         #initialize trace variables
@@ -186,7 +191,9 @@ class TestSpiNNakerSTDP:
         #initialize weight of simulation
         weight = w_init
 
-        log = {0.: {"weight": weight, "tr_pre": tr_pre, "tr_post": tr_post}}
+        #log = {0.: {"weight": weight, "tr_pre": tr_pre, "tr_post": tr_post}}
+
+        log = {times_spikes_pre[0]: {"weight": weight, "tr_pre": tr_pre, "tr_post": tr_post}}
 
         for spk_time in np.unique(times_spikes_syn_persp):
 
@@ -219,10 +226,13 @@ class TestSpiNNakerSTDP:
 
             log[spk_time] = {"weight": weight, "tr_pre": tr_pre, "tr_post": tr_post}
 
-        timevec = np.sort(list(log.keys()))
-        weight_reference = np.array([log[k]["weight"] for k in timevec])
+        #timevec = np.sort(list(log.keys()))
+        #weight_reference = np.array([log[k]["weight"] for k in timevec])
+        #return timevec, weight_reference
 
-        return timevec, weight_reference
+
+        time = times_spikes_post[0] - times_spikes_pre[0]
+        return time,weight
 
 
 
@@ -232,13 +242,26 @@ class TestSpiNNakerSTDP:
 
         pre_spike_times = [250, 1000]
 
-
-        #save post spike times for reference simulation
+        #save spike times for reference simulation
         ref_post_spike_times = []
+        ref_pre_spike_times = []
 
-        for t_post in np.linspace(200, 300, 19):
+
+#!!!
+#(200, 300, 19)
+
+        for t_post in np.linspace(200, 300, 10):
         #for t_post in [450.]:
                 dw, actual_pre_spike_times, actual_post_spike_times = self.run_sim(pre_spike_times, [t_post])
+
+
+#!!!
+                #save spike times for reference simulation
+                if len(ref_pre_spike_times) < 2:
+
+                    ref_pre_spike_times.append(float(actual_pre_spike_times[0][0]))
+                    ref_pre_spike_times.append(float(actual_pre_spike_times[0][1]))
+
 
                 ref_post_spike_times.append(float(actual_post_spike_times[0][0]))
 
@@ -259,19 +282,32 @@ class TestSpiNNakerSTDP:
         print("weights after sim = " + str(res_weights))
 
 
-        #create list containing all spike times
-        all_spike_times = sorted(set(pre_spike_times + ref_post_spike_times))
         #run reference simulation
-        ref_timevec, ref_weight_reference = self.run_reference_simulation(pre_spike_times, ref_post_spike_times, all_spike_times)
+        ref_weightvec = []
+        ref_timevec = []
 
+        for t_post in ref_post_spike_times:
+
+#!!!
+#2preSpike case
+#            all_spike_times = ref_pre_spike_times
+#            all_spike_times.append(t_post)
+#            ref_time, ref_weight = self.run_reference_simulation(ref_pre_spike_times, [t_post], all_spike_times)
+#1preSpike case
+            fixed_pre_spike = ref_pre_spike_times[0]
+            all_spike_times = [fixed_pre_spike,t_post]
+            ref_time, ref_weight = self.run_reference_simulation([fixed_pre_spike], [t_post], all_spike_times)
+
+            print("!!!!!!!!!!!!!WEIGHT REFERENCE!!!!!!!!!!!!!!!!!!!" + str(ref_weight))
+            print("!!!!!!!!!!!!!TIME REFERENCE !!!!!!!!!!!!!!!!!!!!" + str(ref_time))
+            ref_weightvec.append(ref_weight)
+            ref_timevec.append(ref_time)
+
+#!!!
         print("spinnaker weight vector:")
         print(res_weights)
-        print("reference weight vector:")
-        print(ref_weight_reference)
-
-
-        import pdb
-        pdb.set_trace()
+        print("reference weight vector")
+        print(ref_weightvec)
 
 
 
@@ -279,7 +315,11 @@ class TestSpiNNakerSTDP:
 
 
         fig, ax = plt.subplots()
+        #plot spinnaker sim
         ax.plot(spike_time_axis, res_weights, '.')
+        #plot reference sim
+        ax.plot(ref_timevec, ref_weightvec, '.')
+
         ax.set_xlabel(r"$t_{pre} - t_{post} [ms]$")
         ax.set_ylabel(r"$\Delta w$")
         ax.set_title("STDP-Window")
