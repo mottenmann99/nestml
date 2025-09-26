@@ -168,8 +168,8 @@ class TestSpiNNakerSTDP:
         delay = 1
 #!!! lambda 0.01
 # 175.0 is good for case w only one pre spike
-# 140.0 is good for case w two pre spike like spinnaker sim
-        _lambda = 175.0
+# 160.0 - 170.0 is good for case w two pre spike like spinnaker sim
+        _lambda = 170.0
         tau_pre = 20
         tau_post = 20
 
@@ -290,13 +290,13 @@ class TestSpiNNakerSTDP:
 
 #!!!
 #2preSpike case
-#            all_spike_times = ref_pre_spike_times
-#            all_spike_times.append(t_post)
-#            ref_time, ref_weight = self.run_reference_simulation(ref_pre_spike_times, [t_post], all_spike_times)
+            all_spike_times = ref_pre_spike_times
+            all_spike_times.append(t_post)
+            ref_time, ref_weight = self.run_reference_simulation(ref_pre_spike_times, [t_post], all_spike_times)
 #1preSpike case
-            fixed_pre_spike = ref_pre_spike_times[0]
-            all_spike_times = [fixed_pre_spike,t_post]
-            ref_time, ref_weight = self.run_reference_simulation([fixed_pre_spike], [t_post], all_spike_times)
+#            fixed_pre_spike = ref_pre_spike_times[0]
+#            all_spike_times = [fixed_pre_spike,t_post]
+#            ref_time, ref_weight = self.run_reference_simulation([fixed_pre_spike], [t_post], all_spike_times)
 
             print("!!!!!!!!!!!!!WEIGHT REFERENCE!!!!!!!!!!!!!!!!!!!" + str(ref_weight))
             print("!!!!!!!!!!!!!TIME REFERENCE !!!!!!!!!!!!!!!!!!!!" + str(ref_time))
@@ -306,6 +306,12 @@ class TestSpiNNakerSTDP:
 #!!!
         print("spinnaker weight vector:")
         print(res_weights)
+
+        #2preSpikes adjust vector so they overlap in the graph
+        vec_diff = res_weights[0] - ref_weightvec[0]
+
+        ref_weightvec = [x + vec_diff for x in ref_weightvec]
+
         print("reference weight vector")
         print(ref_weightvec)
 
