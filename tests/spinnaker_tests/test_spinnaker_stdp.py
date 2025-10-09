@@ -166,9 +166,7 @@ class TestSpiNNakerSTDP:
         """
         #set synaptic parameters
         delay = 1
-#!!! lambda 0.01
-# 175.0 is good for case w only one pre spike
-# 160.0 - 170.0 is good for case w two pre spike like spinnaker sim
+        #SpiNNaker: lambda 0.01
         _lambda = 170.0
         tau_pre = 20
         tau_post = 20
@@ -177,11 +175,11 @@ class TestSpiNNakerSTDP:
         #mu_plus = 1
         #mu_minus = 1
 
-#!!! w_max = 100.0
+        #SpiNNaker w_max = 100.0
         w_max = 300.0
-#!!! w_min 0.0
+        #SpiNNaker w_min 0.0
         w_min = -300.0
-#!!! w_init = 0
+        #SpiNNaker w_init = 0
         w_init = 0
 
         #initialize trace variables
@@ -237,7 +235,7 @@ class TestSpiNNakerSTDP:
 
 
     def test_stdp(self):
-        res_weights = []
+        spinn_weightvec = []
         spike_time_axis = []
 
         pre_spike_times = [250, 1000]
@@ -250,12 +248,10 @@ class TestSpiNNakerSTDP:
 #!!!
 #(200, 300, 19)
 
-        for t_post in np.linspace(200, 300, 10):
+        for t_post in np.linspace(200, 300, 2):
         #for t_post in [450.]:
                 dw, actual_pre_spike_times, actual_post_spike_times = self.run_sim(pre_spike_times, [t_post])
 
-
-#!!!
                 #save spike times for reference simulation
                 if len(ref_pre_spike_times) < 2:
 
@@ -268,9 +264,9 @@ class TestSpiNNakerSTDP:
                 spike_time_axis.append(float(actual_post_spike_times[0][0]) - float(actual_pre_spike_times[0][0]))
 
                 if dw > 16000:   # XXX TODO REMOVE THIS IF...THEN..ELSE
-                    res_weights.append(dw - 32768)
+                    spinn_weightvec.append(dw - 32768)
                 else:
-                    res_weights.append(dw)
+                    spinn_weightvec.append(dw)
 
                 print("actual pre_spikes: " + str(actual_pre_spike_times))
                 print("actual post_spikes: " + str(actual_post_spike_times))
@@ -279,7 +275,7 @@ class TestSpiNNakerSTDP:
         print("Simulation results")
         print("------------------")
         print("timevec after sim = " + str(spike_time_axis))
-        print("weights after sim = " + str(res_weights))
+        print("weights after sim = " + str(spinn_weightvec))
 
 
         #run reference simulation
@@ -288,27 +284,24 @@ class TestSpiNNakerSTDP:
 
         for t_post in ref_post_spike_times:
 
-#!!!
-#2preSpike case
             all_spike_times = ref_pre_spike_times
             all_spike_times.append(t_post)
             ref_time, ref_weight = self.run_reference_simulation(ref_pre_spike_times, [t_post], all_spike_times)
-#1preSpike case
+
 #            fixed_pre_spike = ref_pre_spike_times[0]
 #            all_spike_times = [fixed_pre_spike,t_post]
 #            ref_time, ref_weight = self.run_reference_simulation([fixed_pre_spike], [t_post], all_spike_times)
 
-            print("!!!!!!!!!!!!!WEIGHT REFERENCE!!!!!!!!!!!!!!!!!!!" + str(ref_weight))
-            print("!!!!!!!!!!!!!TIME REFERENCE !!!!!!!!!!!!!!!!!!!!" + str(ref_time))
+#            print("!!!!!!!!!!!!!WEIGHT REFERENCE!!!!!!!!!!!!!!!!!!!" + str(ref_weight))
+#            print("!!!!!!!!!!!!!TIME REFERENCE !!!!!!!!!!!!!!!!!!!!" + str(ref_time))
             ref_weightvec.append(ref_weight)
             ref_timevec.append(ref_time)
 
-#!!!
         print("spinnaker weight vector:")
-        print(res_weights)
+        print(spinn_weightvec)
 
-        #2preSpikes adjust vector so they overlap in the graph
-        vec_diff = res_weights[0] - ref_weightvec[0]
+        #adjust reference plot
+        vec_diff = spinn_weightvec[0] - ref_weightvec[0]
 
         ref_weightvec = [x + vec_diff for x in ref_weightvec]
 
@@ -316,30 +309,80 @@ class TestSpiNNakerSTDP:
         print(ref_weightvec)
 
 
+        #calculate deviation of reference weight vector and spinnaker weight vector
+
+        vec_dev = []
+        for i in range(0,len(ref_timevec)):
+
+            tmp_dev = (ref_weightvec[i] - spinn_weightvec[i]) / spinn_weightvec[i]
+
+            tmp_dev = abs(tmp_dev) * 100
+
+            vec_dev.append(tmp_dev)
+
+
+        print("weight deviations vector")
+        print(vec_dev)
 
         #TODO add comparison function here
 
 
         fig, ax = plt.subplots()
         #plot spinnaker sim
-        ax.plot(spike_time_axis, res_weights, '.')
+        ax.plot(spike_time_axis, spinn_weightvec, '.')
         #plot reference sim
         ax.plot(ref_timevec, ref_weightvec, '.')
 
         ax.set_xlabel(r"$t_{pre} - t_{post} [ms]$")
-        ax.set_ylabel(r"$\Delta w$")
+        ax.set_ylabel(r"$w$")
         ax.set_title("STDP-Window")
         ax.grid(True)
 
-#        ax.subplots_adjust(bottom=0.2)
 
-        """ax.figtext(0.5, 0.05,
-                        r"$\tau_+ = 20ms,\tau_- = 20ms, A_+ = 0.5, A_- = 0.5$",
-                        ha='center',       # horizontal alignment
-                        va='bottom',       # vertical alignment
-                        fontsize=10,
-                        color='gray')"""
+        #create plot for deviations
+
+        fig_dev, ax_dev = plt.subplots()
+        #plot spinnaker sim
+        ax_dev.plot(spike_time_axis, vec_dev, '.')
+
+        ax_dev.set_xlabel(r"$t_{pre} - t_{post} [ms]$")
+        ax_dev.set_ylabel("Deviation Percentage")
+        ax_dev.set_title("Weight Deviations Over Time")
+        ax_dev.grid(True)
+
+        #create table for vector values and deviations
+
+        columns = [r"$t_{pre} - t_{post} [ms]$","Reference Weights","SpiNNaker Weights","Deviation Percentage"]
+        rows = list(zip(ref_timevec,ref_weightvec,spinn_weightvec,vec_dev))
+
+
+        #create seperate plot for table of values
+        fig_table, ax_table = plt.subplots(figsize=(8, len(rows) * 0.5 + 1))
+        ax_table.axis('off')
+
+        table = ax_table.table(
+            cellText=rows,
+            colLabels=columns,
+            loc='center',
+            cellLoc='center'
+        )
+
+        table.auto_set_font_size(False)
+        table.set_fontsize(9)
+        table.scale(1.2, 1.2)
+
+        fig_table.tight_layout()
+        fig_table.savefig("vector_table.png", bbox_inches='tight')
+        #plt.close(fig_table)
+
+
+
+
+
+#        ax.subplots_adjust(bottom=0.2)
 
 
 
         fig.savefig("plot.png")
+        fig_table.savefig("vector_table.png", bbox_inches='tight')
+        fig_dev.savefig("plot_dev.png")
