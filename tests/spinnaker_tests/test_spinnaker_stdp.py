@@ -176,9 +176,9 @@ class TestSpiNNakerSTDP:
         #mu_minus = 1
 
         #SpiNNaker w_max = 100.0
-        w_max = 300.0
+        w_max = 500.0
         #SpiNNaker w_min 0.0
-        w_min = -300.0
+        w_min = -500.0
         #SpiNNaker w_init = 0
         w_init = 0
 
@@ -201,6 +201,9 @@ class TestSpiNNakerSTDP:
 
                 tr_post = self.get_trace_at(spk_time, times_spikes_post,
                                        tau_post, before_increment=True, extra_debug=True)
+
+
+
 
                 dw = _lambda * tr_pre
 
@@ -231,8 +234,6 @@ class TestSpiNNakerSTDP:
 
         time = times_spikes_post[0] - times_spikes_pre[0]
         return time,weight
-
-
 
     def test_stdp(self):
         spinn_weightvec = []
@@ -347,7 +348,7 @@ class TestSpiNNakerSTDP:
 
         ax_dev.set_xlabel(r"$t_{pre} - t_{post} [ms]$")
         ax_dev.set_ylabel("Deviation Percentage")
-        ax_dev.set_title("Weight Deviations Over Time")
+        ax_dev.set_title("Weight Deviations From Reference To SpiNNaker Simulation")
         ax_dev.grid(True)
 
         #create table for vector values and deviations
@@ -372,7 +373,7 @@ class TestSpiNNakerSTDP:
         table.scale(1.2, 1.2)
 
         fig_table.tight_layout()
-        fig_table.savefig("vector_table.png", bbox_inches='tight')
+        fig_table.savefig("vector_table.png", bbox_inches='tight', pad_inches=0)
         #plt.close(fig_table)
 
 
