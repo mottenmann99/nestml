@@ -249,7 +249,10 @@ class TestSpiNNakerSTDP:
 #!!!
 #(200, 300, 19)
 
-        for t_post in np.linspace(200, 300, 2):
+
+        d_pts = 10
+
+        for t_post in np.linspace(200, 300, d_pts):
         #for t_post in [450.]:
                 dw, actual_pre_spike_times, actual_post_spike_times = self.run_sim(pre_spike_times, [t_post])
 
@@ -334,9 +337,9 @@ class TestSpiNNakerSTDP:
         #plot reference sim
         ax.plot(ref_timevec, ref_weightvec, '.')
 
-        ax.set_xlabel(r"$t_{pre} - t_{post} [ms]$")
+        ax.set_xlabel(r"$t_{post} - t_{pre} [ms]$")
         ax.set_ylabel(r"$w$")
-        ax.set_title("STDP-Window")
+        ax.set_title("STDP-Window for: "+str(d_pts)+" Datapoints")
         ax.grid(True)
 
 
@@ -346,9 +349,9 @@ class TestSpiNNakerSTDP:
         #plot spinnaker sim
         ax_dev.plot(spike_time_axis, vec_dev, '.')
 
-        ax_dev.set_xlabel(r"$t_{pre} - t_{post} [ms]$")
+        ax_dev.set_xlabel(r"$t_{post} - t_{pre} [ms]$")
         ax_dev.set_ylabel("Deviation Percentage")
-        ax_dev.set_title("Weight Deviations From Reference To SpiNNaker Simulation")
+        ax_dev.set_title("Weight Deviations From Reference To SpiNNaker Sim." +str(d_pts)+" Datapoints")
         ax_dev.grid(True)
 
         #create table for vector values and deviations
