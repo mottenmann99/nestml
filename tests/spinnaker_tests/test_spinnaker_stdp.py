@@ -84,7 +84,7 @@ class TestSpiNNakerSTDP:
         p.Projection(pre_input, pre_spiking, p.OneToOneConnector(), receptor_type=exc_input, synapse_type=p.StaticSynapse(weight=weight_pre))
         p.Projection(post_input, post_spiking, p.OneToOneConnector(), receptor_type=exc_input, synapse_type=p.StaticSynapse(weight=weight_post))
 
-        stdp_model = stdp_synapse_nestml(weight=0) #0x8000)
+        stdp_model = stdp_synapse_nestml(weight=500) #0x8000)
         stdp_projection = p.Projection(pre_spiking, post_spiking, p.AllToAllConnector(), synapse_type=stdp_model, receptor_type=exc_input)
         #stdp_projection_inh = p.Projection(pre_spiking, post_spiking, p.AllToAllConnector(), synapse_type=stdp_model, receptor_type=inh_input)
 
@@ -250,7 +250,7 @@ class TestSpiNNakerSTDP:
 #(200, 300, 19)
 
 
-        d_pts = 10
+        d_pts = 100
 
         for t_post in np.linspace(200, 300, d_pts):
         #for t_post in [450.]:
@@ -318,9 +318,9 @@ class TestSpiNNakerSTDP:
         vec_dev = []
         for i in range(0,len(ref_timevec)):
 
-            tmp_dev = (ref_weightvec[i] - spinn_weightvec[i]) / spinn_weightvec[i]
+            tmp_dev = abs(ref_weightvec[i] - spinn_weightvec[i])
 
-            tmp_dev = abs(tmp_dev) * 100
+            tmp_dev = abs(tmp_dev)
 
             vec_dev.append(tmp_dev)
 
@@ -350,7 +350,7 @@ class TestSpiNNakerSTDP:
         ax_dev.plot(spike_time_axis, vec_dev, '.')
 
         ax_dev.set_xlabel(r"$t_{post} - t_{pre} [ms]$")
-        ax_dev.set_ylabel("Deviation Percentage")
+        ax_dev.set_ylabel("Absolute Deviations")
         ax_dev.set_title("Weight Deviations From Reference To SpiNNaker Sim." +str(d_pts)+" Datapoints")
         ax_dev.grid(True)
 
@@ -390,3 +390,17 @@ class TestSpiNNakerSTDP:
         fig.savefig("plot.png")
         fig_table.savefig("vector_table.png", bbox_inches='tight')
         fig_dev.savefig("plot_dev.png")
+
+
+
+        #save vectors to textfile
+
+
+        with open("spinnakerVectors.txt", "w", encoding="utf-8") as f:
+            f.write(f"Spike Times 1: {ref_timevec}\n")
+            f.write(f" \n")
+            f.write(f"Reference Weightvector 2: {ref_weightvec}\n")
+            f.write(f" \n")
+            f.write(f"SpiNNaker Weightvector 3: {spinn_weightvec}\n")
+
+
